@@ -4,7 +4,7 @@ import {
   HttpError, ESTADOS, FILE_PROPS, listTickets, getPage, toTicket, assertInDataSource,
   createTicket, updateTicket, listComments, addComment, keepFiles,
 } from "../../lib/notion.mjs";
-import { login, verify, sign } from "../../lib/auth.mjs";
+import { login, verify, sign, semPin, nomes } from "../../lib/auth.mjs";
 import { uploads } from "../../lib/store.mjs";
 
 export const config = { path: "/api/:action" };
@@ -51,9 +51,12 @@ async function loadTicketPage(id) {
 }
 
 async function handle(req, action, url) {
+  if (action === "config") {
+    return json(semPin() ? { semPin: true, nomes: nomes() } : { semPin: false });
+  }
   if (action === "login") {
-    const { pin } = await body(req);
-    return json(login(pin));
+    const { pin, nome } = await body(req);
+    return json(login(pin, nome));
   }
 
   const user = verify(req);

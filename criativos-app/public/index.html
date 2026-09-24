@@ -199,6 +199,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
       <button class="btn primary" type="submit">Entrar</button>
       <div class="err" id="loginErr"></div>
     </form>
+    <div id="pickUser" class="hidden" style="display:flex;flex-direction:column;gap:10px"></div>
   </div>
 </section>
 
@@ -292,12 +293,26 @@ async function api(action,{body,query,raw}={}){
 }
 
 /* ---------- login ---------- */
+async function doLogin(body){
+  const r=await api("login",{body});S.token=r.token;S.user=r.user;lsSet("cri_token",r.token);lsSet("cri_user",JSON.stringify(r.user));start()
+}
+async function showLogin(){
+  $("#login").classList.remove("hidden");
+  try{
+    const c=await api("config");
+    if(c.semPin){
+      $("#loginForm").classList.add("hidden");const w=$("#pickUser");w.classList.remove("hidden");
+      w.innerHTML='<div class="sub" style="margin:0 0 6px">Quem és?</div>'+c.nomes.map(n=>`<button class="btn" style="justify-content:center;padding:13px">${esc(n)}</button>`).join("");
+      w.querySelectorAll("button").forEach((b,i)=>b.onclick=()=>doLogin({nome:c.nomes[i]}).catch(e=>toast(e.message,true)));
+    }
+  }catch{}
+}
 $("#loginForm").onsubmit=async e=>{
   e.preventDefault();$("#loginErr").textContent="";
-  try{const r=await api("login",{body:{pin:$("#pin").value}});S.token=r.token;S.user=r.user;lsSet("cri_token",r.token);lsSet("cri_user",JSON.stringify(r.user));start()}
+  try{await doLogin({pin:$("#pin").value})}
   catch(err){$("#loginErr").textContent=err.message;$("#pin").select()}
 };
-function logout(){S.token=null;lsSet("cri_token",null);lsSet("cri_user",null);$("#app").classList.add("hidden");closeDrawer();$("#login").classList.remove("hidden");$("#pin").value=""}
+function logout(){S.token=null;lsSet("cri_token",null);lsSet("cri_user",null);$("#app").classList.add("hidden");closeDrawer();$("#pin").value="";showLogin()}
 $("#logout").onclick=logout;
 
 function start(){
@@ -610,8 +625,8 @@ $("#formDlg").addEventListener("close",async()=>{
 
 /* ---------- arranque ---------- */
 S.token=lsGet("cri_token");try{S.user=JSON.parse(lsGet("cri_user")||"null")}catch{}
-if(S.token&&S.user){api("me").then(r=>{S.user=r.user;start()}).catch(()=>{$("#login").classList.remove("hidden")})}
-else $("#login").classList.remove("hidden");
+if(S.token&&S.user){api("me").then(r=>{S.user=r.user;start()}).catch(()=>showLogin())}
+else showLogin();
 </script>
 </body>
 </html>

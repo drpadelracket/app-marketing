@@ -20,9 +20,15 @@ function secret() {
 const b64 = (s) => Buffer.from(s).toString("base64url");
 export const sign = (data) => crypto.createHmac("sha256", secret()).update(data).digest("base64url");
 
-export function login(pin) {
-  const u = users()[String(pin || "").trim()];
-  if (!u) throw new HttpError(401, "PIN errado");
+// SEM_PIN=1 no Netlify: entra-se só a escolher o nome (sem PIN)
+export const semPin = () => process.env.SEM_PIN === "1";
+export const nomes = () => Object.values(users()).map((u) => u.nome);
+
+export function login(pin, nome) {
+  const u = semPin() && nome
+    ? Object.values(users()).find((x) => x.nome === nome)
+    : users()[String(pin || "").trim()];
+  if (!u) throw new HttpError(401, semPin() ? "Utilizador desconhecido" : "PIN errado");
   const papel = ["ads", "design", "admin"].includes(u.papel) ? u.papel : "ads";
   const user = { nome: u.nome || "Utilizador", papel };
   const payload = b64(JSON.stringify({ ...user, exp: Date.now() + 30 * 864e5 }));
